@@ -1,6 +1,6 @@
 # Python Telemetry Observer
 
-[![Test](https://github.com/IM-Cloud-Spain-Connectors/python-telemetry-observer/actions/workflows/test.yml/badge.svg)](https://github.com/othercodes/python-connect-api-facades/actions/workflows/test.yml)
+[![Test](https://github.com/IM-Cloud-Spain-Connectors/python-telemetry-observer/actions/workflows/test.yml/badge.svg)](https://github.com/IM-Cloud-Spain-Connectors/python-telemetry-observer/actions/workflows/test.yml)
 
 This package provides a set of contracts and adapters to provide telemetry observers for different
 telemetry drivers.

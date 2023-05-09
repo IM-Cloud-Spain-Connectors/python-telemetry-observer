@@ -9,9 +9,9 @@ from rndi.telemetry.contracts import Observer
 
 
 def provide_none_telemetry_adapter(_: dict) -> Observer:
-    return NoneObserver()
+    return NoneObserverAdapter()
 
 
-class NoneObserver(Observer):
-    def trace(self, name: str, context: Dict[str, Any], high_level: bool = False):
+class NoneObserverAdapter(Observer):
+    def trace(self, name: str, context: Dict[str, Any]):
         return None

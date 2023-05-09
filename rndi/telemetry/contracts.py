@@ -11,12 +11,11 @@ class Observer(ABC):  # pragma: no cover
     """
     Observer contract, this will provide the interface to trace, do metrics and logs.
     """
+
     @abstractmethod
-    def trace(self, name: str, context: Dict[str, Any], high_level: bool = False):
+    def trace(self, name: str, context: Dict[str, Any]):
         """
         Trace a transaction.
-        :param high_level: Used for the high level trace, which is the trace generated
-         when a request is received
         :param name: The name of the span we will create
         :param context: The context for the trace, usually a raw request.
         :return: None

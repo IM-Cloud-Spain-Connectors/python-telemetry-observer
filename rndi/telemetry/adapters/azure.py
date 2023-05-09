@@ -12,7 +12,7 @@ from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import sampling, Tracer, TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.trace import NonRecordingSpan, SpanContext
+from opentelemetry.trace import NonRecordingSpan, Span, SpanContext
 from pkg_resources import get_distribution
 from rndi.connect.business_objects.adapters import Request
 from rndi.telemetry.contracts import Observer
@@ -82,8 +82,8 @@ def provide_azure_insights_observer_telemetry_adapter(
     tracer_provider = TracerProvider(
         sampler=sampling.ALWAYS_ON,
         resource=Resource.create({
-            "service.name": f"{config.get('PACKAGE')}",
-            "service.version": get_distribution(config.get('PACKAGE')).version,
+            "service.name": config.get('TELEMETRY_SERVICE_NAME'),
+            "service.version": get_distribution(config.get('TELEMETRY_SERVICE_NAME')).version,
             "connect.extension-runner": get_distribution("connect-extension-runner").version,
             "connect.openapi-client": get_distribution("connect-openapi-client").version,
         }),
@@ -97,26 +97,23 @@ def provide_azure_insights_observer_telemetry_adapter(
     )
     tracer_provider.add_span_processor(span_processor)
 
-    return DevOpsExtensionAzureInsightsObserver(
-        package=config.get('PACKAGE'),
+    return DevOpsExtensionAzureInsightsObserverAdapter(
         connection_string=config.get('INSIGHTS_CONNECTION_STRING'),
         automatic_instrumentation=automatic_instrumentation,
-        tracer=trace.get_tracer(config.get('TRACER_NAME', 'ObserverInstrumentationModule')),
+        tracer=trace.get_tracer('TELEMETRY_SERVICE_NAME'),
     )
 
 
-class DevOpsExtensionAzureInsightsObserver(Observer):  # pragma: no cover
+class DevOpsExtensionAzureInsightsObserverAdapter(Observer):  # pragma: no cover
     def __init__(
             self,
-            package: str,
             connection_string: str,
             tracer: Tracer,
             automatic_instrumentation: Optional[Callable] = None,
     ):
         self.tracer = tracer
-        self.package = package
         self.connection_string = connection_string
-
+        self.business_transaction: Optional[Span] = None
         if automatic_instrumentation:
             automatic_instrumentation = []
 
@@ -124,9 +121,9 @@ class DevOpsExtensionAzureInsightsObserver(Observer):  # pragma: no cover
             instrument()
 
     @contextmanager
-    def trace(self, name: str, context: Dict[str, Any], high_level: bool = False):
+    def trace(self, name: str, context: Dict[str, Any]):
         """
-        For High Level operations we expect an identifier to be present in the context, it is
+        For Business Transactions we expect an identifier to be present in the context, it is
         needed because we need to correlate the high level operation with the low level
         operations that are being executed in the background.
         We don't want the observer to crash the entire application if we could not generate
@@ -135,7 +132,7 @@ class DevOpsExtensionAzureInsightsObserver(Observer):  # pragma: no cover
         That way we will not cause the side effect of crashing the application, and instead
         we will just lose observability for that runtime execution.
         """
-        if high_level:
+        if self.business_transaction is None:
             if context.get('id') is None:
                 yield None
 
@@ -143,6 +140,7 @@ class DevOpsExtensionAzureInsightsObserver(Observer):  # pragma: no cover
                     name,
                     context=get_context(context.get("id")),
             ) as span:
+                self.business_transaction = span
                 hydrate_span_with_request_attributes(span, context)
                 yield span
         else:

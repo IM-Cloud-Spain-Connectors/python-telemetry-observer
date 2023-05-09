@@ -6,11 +6,11 @@
 
 from opentelemetry.context import Context
 from rndi.telemetry.adapters.azure import generate_trace_id, get_context
-from rndi.telemetry.adapters.null import NoneObserver
+from rndi.telemetry.adapters.null import NoneObserverAdapter
 
 
-def test_none_observer_should_do_nothing():
-    observer = NoneObserver()
+def test_none_observer_adapter_should_do_nothing():
+    observer = NoneObserverAdapter()
     observer.trace('test', {})
     # Just assert that no exception is thrown
     assert True

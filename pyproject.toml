@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "python-telemetry-observer"
+name = "rndi-python-telemetry-observer"
 version = "1.0.0"
 description = "Provide an observer contract to work with telemetry. By default includes an AzureInsights observer."
 authors = ["Sergio Palacio Ródenas <sergio.palaciorodenas@cloudblue.com>"]
@@ -30,6 +30,7 @@ python = ">=3.8.1,<4"
 azure-monitor-opentelemetry = "^1.0.0-beta.11"
 opentelemetry-sdk = "^1.11.1"
 opentelemetry-instrumentation-requests = "*"
+opentelemetry-instrumentation-psycopg2 = "*"
 rndi-connect-business-objects= { git = "https://github.com/IM-Cloud-Spain-Connectors/python-connect-business-objects", branch='master'}
 
 [tool.poetry.dev-dependencies]

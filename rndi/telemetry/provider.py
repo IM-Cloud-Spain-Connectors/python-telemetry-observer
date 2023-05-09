@@ -30,7 +30,7 @@ def provide_telemetry_observer(
 
     if provider is None:
         def _unsupported_driver(_: dict) -> Observer:
-            raise ValueError(f"Unsupported cache driver {driver}")
+            raise ValueError(f"Unsupported telemetry driver {driver}")
 
         provider = _unsupported_driver
 

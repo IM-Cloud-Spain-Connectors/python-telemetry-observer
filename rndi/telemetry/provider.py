@@ -16,8 +16,8 @@ def provide_telemetry_observer(
         logger: LoggerAdapter,
         drivers: Optional[Dict[str, Callable[[dict], Observer]]] = None,
         automatic_instrumentation: Optional[List[Callable[[], None]]] = None,
-):
-    supported: Dict[str, Callable[[dict], Observer]] = {
+):  # pragma: no cover
+    supported: Dict[str, Callable[[dict, List[Callable[[], None]]], Observer]] = {
         'insights': provide_azure_insights_observer_telemetry_adapter,
         'none': provide_none_telemetry_adapter,
     }
@@ -26,16 +26,16 @@ def provide_telemetry_observer(
         supported.update(drivers)
 
     driver = config.get('TELEMETRY_DRIVER', 'none')
-    provider = supported.get(driver, automatic_instrumentation)
+    provider = supported.get(driver)
 
     if provider is None:
-        def _unsupported_driver(_: dict) -> Observer:
+        def _unsupported_driver(_: dict, __: List[Callable[[], None]]) -> Observer:
             raise ValueError(f"Unsupported telemetry driver {driver}")
 
         provider = _unsupported_driver
 
     try:
-        adapter = provider(config)
+        adapter = provider(config, automatic_instrumentation)
         logger.debug(f"Telemetry Observer configured with {driver} driver.")
     except Exception as e:
         adapter = provide_none_telemetry_adapter(config)

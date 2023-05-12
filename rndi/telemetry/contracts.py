@@ -4,7 +4,9 @@
 # Copyright (c) 2023 Ingram Micro. All Rights Reserved.
 #
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Dict, Iterable
+
+from opentelemetry.trace import Span
 
 
 class Observer(ABC):  # pragma: no cover
@@ -13,7 +15,7 @@ class Observer(ABC):  # pragma: no cover
     """
 
     @abstractmethod
-    def trace(self, name: str, context: Dict[str, Any]):
+    def trace(self, name: str, context: Dict[str, Any]) -> Iterable[Span]:
         """
         Trace a transaction.
         :param name: The name of the span we will create

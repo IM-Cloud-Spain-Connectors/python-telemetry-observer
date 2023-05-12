@@ -5,7 +5,7 @@
 #
 import hashlib
 from contextlib import contextmanager
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Iterator, Optional
 
 from azure.monitor.opentelemetry.exporter import AzureMonitorTraceExporter
 from opentelemetry import trace
@@ -15,6 +15,7 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.trace import NonRecordingSpan, Span, SpanContext
 from pkg_resources import get_distribution
 from rndi.connect.business_objects.adapters import Request
+from rndi.telemetry.adapters.null import DummySpan
 from rndi.telemetry.contracts import Observer
 
 
@@ -121,7 +122,7 @@ class DevOpsExtensionAzureInsightsObserverAdapter(Observer):  # pragma: no cover
             instrument()
 
     @contextmanager
-    def trace(self, name: str, context: Dict[str, Any]):
+    def trace(self, name: str, context: Dict[str, Any]) -> Iterator[Span]:
         """
         For Business Transactions we expect an identifier to be present in the context, it is
         needed because we need to correlate the high level operation with the low level
@@ -134,7 +135,8 @@ class DevOpsExtensionAzureInsightsObserverAdapter(Observer):  # pragma: no cover
         """
         if self.business_transaction is None:
             if context.get('id') is None:
-                yield None
+                with DummySpan as span:
+                    yield span()
 
             with self.tracer.start_as_current_span(
                     name,

@@ -115,7 +115,7 @@ class DevOpsExtensionAzureInsightsObserverAdapter(Observer):  # pragma: no cover
         self.tracer = tracer
         self.connection_string = connection_string
         self.business_transaction: Optional[Span] = None
-        if automatic_instrumentation:
+        if not automatic_instrumentation:
             automatic_instrumentation = []
 
         for instrument in automatic_instrumentation:

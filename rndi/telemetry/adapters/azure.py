@@ -135,7 +135,7 @@ class DevOpsExtensionAzureInsightsObserverAdapter(Observer):  # pragma: no cover
         """
         if self.business_transaction is None:
             if context.get('id') is None:
-                with DummySpan as span:
+                with DummySpan() as span:
                     yield span()
 
             with self.tracer.start_as_current_span(

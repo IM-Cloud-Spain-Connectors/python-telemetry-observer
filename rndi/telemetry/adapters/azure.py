@@ -79,7 +79,7 @@ def get_context(request_id: str):
 def provide_azure_insights_observer_telemetry_adapter(
         config: dict,
         automatic_instrumentation: [Callable[[], None]],
-) -> Observer:
+) -> Observer:  # pragma: no cover
     tracer_provider = TracerProvider(
         sampler=sampling.ALWAYS_ON,
         resource=Resource.create({
@@ -89,8 +89,8 @@ def provide_azure_insights_observer_telemetry_adapter(
             "connect.openapi-client": get_distribution("connect-openapi-client").version,
         }),
     )
-    trace.set_tracer_provider(tracer_provider)
 
+    trace.set_tracer_provider(tracer_provider)
     span_processor = BatchSpanProcessor(
         AzureMonitorTraceExporter.from_connection_string(
             config.get('INSIGHTS_CONNECTION_STRING'),
@@ -137,6 +137,7 @@ class DevOpsExtensionAzureInsightsObserverAdapter(Observer):  # pragma: no cover
             if context.get('id') is None:
                 with DummySpan() as span:
                     yield span
+                return
 
             with self.tracer.start_as_current_span(
                     name,

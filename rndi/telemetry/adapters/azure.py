@@ -32,6 +32,22 @@ def generate_trace_id(request_id: str, length: int = 16):
     return int.from_bytes(hash_object.digest()[:length], byteorder='big')
 
 
+def hydrate_span_with_product_action_attributes(span: Span, body):
+    """
+    Given a Product Action Body, hydrate the span attributes with the body of this action.
+    This allows us to generate better panels into an Azure Insights Application Workbook
+    """
+    attributes = {}
+    # if there is an asset_id or a configuration_id in the body, add it to attributes
+    if 'asset_id' in body:
+        attributes['asset_id'] = body['asset_id']
+
+    if 'configuration_id' in body:
+        attributes['configuration_id'] = body['configuration_id']
+
+    span.set_attributes(attributes)
+
+
 def hydrate_span_with_request_attributes(span, request: dict):
     """
     Given a request and a span, hydrate the span attributes with the request attributes
@@ -105,6 +121,44 @@ def provide_azure_insights_observer_telemetry_adapter(
     )
 
 
+def get_transaction_id_for_product_action(request: dict):
+    """
+    Get the transaction id for a product action
+    :return:
+    """
+    transaction_id = None
+    if request.get('jwt_payload', {}).get('configuration_id'):
+        return request.get('jwt_payload', {}).get('configuration_id')
+
+    if request.get('jwt_payload', {}).get('asset_id'):
+        return request.get('jwt_payload', {}).get('asset_id')
+
+    return None
+
+
+def is_product_action_request(request: dict) -> bool:
+    """
+    We assume a product action WILL 100% of the times include the JWT_PAYLOAD, and no other
+    integration will do that so if this property exists, its a product action.
+    """
+    return request.get('jwt_payload') is not None
+
+
+def is_background_event_request(request: dict) -> bool:
+    """
+    For normal background events we will just look for the request id
+    """
+    return request.get('id') is not None
+
+
+def is_custom_event_request(request: dict):
+    """
+    Use always after a fallback check for the other methods, if none was success, check if body is present.
+    If it is, we can assume its a custom event.
+    """
+    return request.get('body') is not None
+
+
 class DevOpsExtensionAzureInsightsObserverAdapter(Observer):  # pragma: no cover
     def __init__(
             self,
@@ -134,17 +188,36 @@ class DevOpsExtensionAzureInsightsObserverAdapter(Observer):  # pragma: no cover
         we will just lose observability for that runtime execution.
         """
         if self.business_transaction is None:
-            if context.get('id') is None:
-                with DummySpan() as span:
+            if is_background_event_request(context):
+                with self.tracer.start_as_current_span(
+                        name,
+                        context=get_context(context.get('id')),
+                ) as span:
+                    self.business_transaction = span
+                    hydrate_span_with_request_attributes(span, context)
                     yield span
                 return
 
-            with self.tracer.start_as_current_span(
-                    name,
-                    context=get_context(context.get("id")),
-            ) as span:
-                self.business_transaction = span
-                hydrate_span_with_request_attributes(span, context)
+            if is_product_action_request(context):
+                with self.tracer.start_as_current_span(
+                        name,
+                        context=get_context(get_transaction_id_for_product_action(context)),
+                ) as span:
+                    self.business_transaction = span
+                    hydrate_span_with_product_action_attributes(span, context)
+                    yield span
+                return
+
+            if is_custom_event_request(context):
+                with self.tracer.start_as_current_span(
+                        name,
+                        context=get_context(context.get('body').__str__()),
+                ) as span:
+                    self.business_transaction = span
+                    yield span
+                return
+            # if no possible option was found, just return a dummy span who will not generate traces.
+            with DummySpan() as span:
                 yield span
         else:
             with self.tracer.start_as_current_span(name) as span:

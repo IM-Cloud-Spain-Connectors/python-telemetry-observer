@@ -146,7 +146,7 @@ def get_transaction_id_for_product_action(request: dict):
 def is_product_action_request(request: dict) -> bool:
     """
     We assume a product action WILL 100% of the times include the JWT_PAYLOAD, and no other
-    integration will do that so if this property exists, its a product action.
+    integration will do that so if this property exists, it is a product action.
     """
     has_jwt_payload = request.get('jwt_payload') is not None
     has_configuration_id = request.get('jwt_payload', {}).get('configuration_id') is not None
@@ -165,12 +165,12 @@ def is_background_event_request(request: dict) -> bool:
 def is_custom_event_request(request: dict):
     """
     Use always after a fallback check for the other methods, if none was success, check if body is present.
-    If it is, we can assume its a custom event.
+    If it is, we can assume it is a custom event.
     """
     return request.get('body') is not None
 
 
-class DevOpsExtensionAzureInsightsObserverAdapter(Observer):  # pragma: no cover
+class DevOpsExtensionAzureInsightsObserverAdapter(Observer):
     def __init__(
             self,
             connection_string: str,

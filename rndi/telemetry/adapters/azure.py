@@ -39,11 +39,19 @@ def hydrate_span_with_product_action_attributes(span: Span, body):
     """
     attributes = {}
     # if there is an asset_id or a configuration_id in the body, add it to attributes
-    if 'asset_id' in body:
-        attributes['asset_id'] = body['asset_id']
+    jwt_payload = body.get('jwt_payload')
 
-    if 'configuration_id' in body:
-        attributes['configuration_id'] = body['configuration_id']
+    if jwt_payload is None:
+        return
+
+    asset_id = jwt_payload.get('asset_id')
+    configuration_id = jwt_payload.get('configuration_id')
+
+    if asset_id is not None:
+        attributes['asset_id'] = asset_id
+
+    if configuration_id is not None:
+        attributes['configuration_id'] = configuration_id
 
     span.set_attributes(attributes)
 
@@ -126,7 +134,6 @@ def get_transaction_id_for_product_action(request: dict):
     Get the transaction id for a product action
     :return:
     """
-    transaction_id = None
     if request.get('jwt_payload', {}).get('configuration_id'):
         return request.get('jwt_payload', {}).get('configuration_id')
 
@@ -141,7 +148,11 @@ def is_product_action_request(request: dict) -> bool:
     We assume a product action WILL 100% of the times include the JWT_PAYLOAD, and no other
     integration will do that so if this property exists, its a product action.
     """
-    return request.get('jwt_payload') is not None
+    has_jwt_payload = request.get('jwt_payload') is not None
+    has_configuration_id = request.get('jwt_payload', {}).get('configuration_id') is not None
+    has_asset_id = request.get('jwt_payload', {}).get('asset_id') is not None
+
+    return has_jwt_payload and (has_configuration_id or has_asset_id)
 
 
 def is_background_event_request(request: dict) -> bool:

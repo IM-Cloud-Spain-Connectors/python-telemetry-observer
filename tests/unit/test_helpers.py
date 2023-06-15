@@ -5,7 +5,15 @@
 #
 
 from opentelemetry.sdk import trace
-from rndi.telemetry.adapters.azure import generate_trace_id, hydrate_span_with_request_attributes
+from rndi.telemetry.adapters.azure import (
+    generate_trace_id,
+    get_transaction_id_for_product_action,
+    hydrate_span_with_product_action_attributes,
+    hydrate_span_with_request_attributes,
+    is_background_event_request,
+    is_custom_event_request,
+    is_product_action_request,
+)
 
 ASSET_REQUEST = {
     'id': 'PR-0000-0000-0000-001',
@@ -101,3 +109,130 @@ def test_hydrate_span_should_successfully_hydrate_tier_config_request():
     assert span.attributes.get('request_id') == "TCR-0000-0000-0000-001"
     assert span.attributes.get('request_status') == "pending"
     assert span.attributes.get('request_type') == "setup"
+
+
+def test_hydrate_span_with_product_action_attributes_should_successfully_hydrate_asset_id():
+    tracer_provider = trace.TracerProvider()
+    tracer = tracer_provider.get_tracer(__name__)
+    span = tracer.start_span("root")
+
+    hydrate_span_with_product_action_attributes(span, {
+        'jwt_payload': {
+            'asset_id': '12345',
+        },
+    })
+
+    assert span.attributes.get('asset_id') == "12345"
+
+
+def test_hydrate_span_with_product_action_attributes_should_successfully_hydrate_with_configuration_id():
+    tracer_provider = trace.TracerProvider()
+    tracer = tracer_provider.get_tracer(__name__)
+    span = tracer.start_span("root")
+
+    hydrate_span_with_product_action_attributes(span, {
+        'jwt_payload': {
+            'configuration_id': '12345',
+        },
+    })
+
+    assert span.attributes.get('configuration_id') == "12345"
+
+
+def test_hydrate_span_with_product_action_attributes_should_be_none_if_no_jwt_payload_provided():
+    tracer_provider = trace.TracerProvider()
+    tracer = tracer_provider.get_tracer(__name__)
+    span = tracer.start_span("root")
+
+    hydrate_span_with_product_action_attributes(span, {})
+
+    assert span.attributes.get('configuration_id') is None
+    assert span.attributes.get('asset_id') is None
+
+
+def test_get_transaction_id_for_product_action_should_successfully_return_none_if_invalid_payload():
+    transaction_id = get_transaction_id_for_product_action({})
+
+    assert transaction_id is None
+
+
+def test_get_transaction_id_for_product_action_should_successfully_return_configuration_id():
+    transaction_id = get_transaction_id_for_product_action({
+        'jwt_payload': {
+            'configuration_id': '12345',
+        },
+    })
+
+    assert transaction_id == '12345'
+
+
+def test_get_transaction_id_for_product_action_should_successfully_return_asset_id():
+    transaction_id = get_transaction_id_for_product_action({
+        'jwt_payload': {
+            'asset_id': '12345',
+        },
+    })
+
+    assert transaction_id == '12345'
+
+
+def test_is_product_action_request_should_return_false_if_jwt_payload_is_not_none_but_empty():
+    is_product_action = is_product_action_request({
+        'jwt_payload': {},
+    })
+
+    assert is_product_action is False
+
+
+def test_is_product_action_request_should_return_false_if_jwt_payload_is_none():
+    is_product_action = is_product_action_request({})
+
+    assert is_product_action is False
+
+
+def test_is_product_action_request_should_return_true_if_jwt_payload_has_asset_id():
+    is_product_action = is_product_action_request({
+        "jwt_payload": {
+            "asset_id": "12345",
+        },
+    })
+
+    assert is_product_action is True
+
+
+def test_is_product_action_request_should_return_true_if_jwt_payload_has_configuration_id():
+    is_product_action = is_product_action_request({
+        "jwt_payload": {
+            "configuration_id": "12345",
+        },
+    })
+
+    assert is_product_action is True
+
+
+def test_is_background_event_request_should_return_true_if_id_is_present():
+    is_background_event = is_background_event_request({
+        "id": "12345",
+    })
+
+    assert is_background_event is True
+
+
+def test_is_background_event_request_should_return_false_if_id_is_not_present():
+    is_background_event = is_background_event_request({})
+
+    assert is_background_event is False
+
+
+def test_is_custom_event_request_should_return_true_if_body_is_present():
+    is_custom_event = is_custom_event_request({
+        "body": {},
+    })
+
+    assert is_custom_event is True
+
+
+def test_is_custom_event_request_should_return_false_if_body_is_not_present():
+    is_custom_event = is_custom_event_request({})
+
+    assert is_custom_event is False

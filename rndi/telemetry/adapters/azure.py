@@ -5,15 +5,15 @@
 #
 import hashlib
 from contextlib import contextmanager
-from typing import Any, Callable, Dict, Iterator, Optional
+from typing import Any, Callable, Dict, Iterator, List, Optional
 
 from azure.monitor.opentelemetry.exporter import AzureMonitorTraceExporter
 from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import sampling, Tracer, TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, SpanExporter
 from opentelemetry.trace import NonRecordingSpan, Span, SpanContext
-from pkg_resources import get_distribution
+from pkg_resources import DistributionNotFound, get_distribution
 from rndi.connect.business_objects.adapters import Request
 from rndi.telemetry.adapters.null import DummySpan
 from rndi.telemetry.contracts import Observer
@@ -102,24 +102,37 @@ def get_context(request_id: str):
 
 def provide_azure_insights_observer_telemetry_adapter(
         config: dict,
-        automatic_instrumentation: [Callable[[], None]],
-) -> Observer:  # pragma: no cover
-    tracer_provider = TracerProvider(
-        sampler=sampling.ALWAYS_ON,
-        resource=Resource.create({
-            "service.name": config.get('TELEMETRY_SERVICE_NAME'),
-            "service.version": get_distribution(config.get('TELEMETRY_SERVICE_NAME')).version,
-            "connect.extension-runner": get_distribution("connect-extension-runner").version,
-            "connect.openapi-client": get_distribution("connect-openapi-client").version,
-        }),
-    )
+        automatic_instrumentation: List[Callable[[], None]],
+        exporter: Optional[SpanExporter] = None,
+) -> Observer:
+    try:
+        tracer_provider = TracerProvider(
+            sampler=sampling.ALWAYS_ON,
+            resource=Resource.create({
+                "service.name": config.get('TELEMETRY_SERVICE_NAME'),
+                "service.version": get_distribution(config.get('TELEMETRY_SERVICE_NAME')).version,
+                "connect.extension-runner": get_distribution("connect-extension-runner").version,
+                "connect.openapi-client": get_distribution("connect-openapi-client").version,
+            }),
+        )
+    except DistributionNotFound:
+        tracer_provider = TracerProvider(
+            sampler=sampling.ALWAYS_ON,
+            resource=Resource.create({
+                "service.name": config.get('TELEMETRY_SERVICE_NAME'),
+                "service.version": config.get('TELEMETRY_SERVICE_VERSION'),
+                "connect.extension-runner": config.get('TELEMETRY_CONNECT_EXTENSION_RUNNER_VERSION'),
+                "connect.openapi-client": config.get('TELEMETRY_CONNECT_OPEN_API_VERSION'),
+            }),
+        )
+
+    if exporter is None:
+        exporter = AzureMonitorTraceExporter.from_connection_string(
+            config.get('INSIGHTS_CONNECTION_STRING'),
+        )
 
     trace.set_tracer_provider(tracer_provider)
-    span_processor = BatchSpanProcessor(
-        AzureMonitorTraceExporter.from_connection_string(
-            config.get('INSIGHTS_CONNECTION_STRING'),
-        ),
-    )
+    span_processor = BatchSpanProcessor(exporter)
     tracer_provider.add_span_processor(span_processor)
 
     return DevOpsExtensionAzureInsightsObserverAdapter(
@@ -175,7 +188,7 @@ class DevOpsExtensionAzureInsightsObserverAdapter(Observer):
             self,
             connection_string: str,
             tracer: Tracer,
-            automatic_instrumentation: Optional[Callable] = None,
+            automatic_instrumentation: Optional[List[Callable]] = None,
     ):
         self.tracer = tracer
         self.connection_string = connection_string

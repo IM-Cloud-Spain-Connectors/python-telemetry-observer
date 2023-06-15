@@ -10,7 +10,7 @@ from opentelemetry.trace import Span
 from rndi.telemetry.contracts import Observer
 
 
-class DummySpan:  # pragma: no cover
+class DummySpan:
     def __enter__(self):
         pass
 
@@ -18,11 +18,11 @@ class DummySpan:  # pragma: no cover
         pass
 
 
-def provide_none_telemetry_adapter(_: dict) -> Observer:  # pragma: no cover
+def provide_none_telemetry_adapter(_: dict) -> Observer:
     return NoneObserverAdapter()
 
 
-class NoneObserverAdapter(Observer):  # pragma: no cover
+class NoneObserverAdapter(Observer):
     @contextmanager
     def trace(self, name: str, context: Dict[str, Any]) -> Iterable[Span]:
         with DummySpan() as span:

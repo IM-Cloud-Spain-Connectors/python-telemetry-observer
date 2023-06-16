@@ -16,7 +16,7 @@ def provide_telemetry_observer(
         logger: LoggerAdapter,
         drivers: Optional[Dict[str, Callable[[dict], Observer]]] = None,
         automatic_instrumentation: Optional[List[Callable[[], None]]] = None,
-):  # pragma: no cover
+):
     supported: Dict[str, Callable[[dict, List[Callable[[], None]]], Observer]] = {
         'insights': provide_azure_insights_observer_telemetry_adapter,
         'none': provide_none_telemetry_adapter,

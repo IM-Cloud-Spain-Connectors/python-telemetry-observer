@@ -37,23 +37,27 @@ def hydrate_span_with_product_action_attributes(span: Span, body):
     Given a Product Action Body, hydrate the span attributes with the body of this action.
     This allows us to generate better panels into an Azure Insights Application Workbook
     """
-    attributes = {}
-    # if there is an asset_id or a configuration_id in the body, add it to attributes
-    jwt_payload = body.get('jwt_payload')
+    try:
+        attributes = {}
+        # if there is an asset_id or a configuration_id in the body, add it to attributes
+        jwt_payload = body.get('jwt_payload')
 
-    if jwt_payload is None:
+        if jwt_payload is None:
+            return
+
+        asset_id = jwt_payload.get('asset_id')
+        configuration_id = jwt_payload.get('configuration_id')
+
+        if asset_id is not None:
+            attributes['asset_id'] = asset_id
+
+        if configuration_id is not None:
+            attributes['configuration_id'] = configuration_id
+
+        span.set_attributes(attributes)
+    except Exception:
+        """We don't want to break the execution at any cost"""
         return
-
-    asset_id = jwt_payload.get('asset_id')
-    configuration_id = jwt_payload.get('configuration_id')
-
-    if asset_id is not None:
-        attributes['asset_id'] = asset_id
-
-    if configuration_id is not None:
-        attributes['configuration_id'] = configuration_id
-
-    span.set_attributes(attributes)
 
 
 def hydrate_span_with_request_attributes(span, request: dict):
@@ -64,31 +68,35 @@ def hydrate_span_with_request_attributes(span, request: dict):
     :param request:
     :return:
     """
-    request = Request(request)
-    if request.is_asset_request():
-        span.set_attributes({
-            'vendor_id': request.asset().connection('vendor').get('id'),
-            'product_id': request.asset().product('id'),
-            'marketplace_id': request.asset().marketplace('id'),
-            'contract_id': request.asset().contract('id'),
-            'connection_id': request.asset().connection('id'),
-            'asset_id': request.asset().id(),
-            'request_id': request.id(),
-            'request_status': request.status(),
-            'request_type': request.type(),
-        })
+    try:
+        request = Request(request)
+        if request.is_asset_request():
+            span.set_attributes({
+                'vendor_id': request.asset().connection('vendor', {}).get('id'),
+                'product_id': request.asset().product('id'),
+                'marketplace_id': request.asset().marketplace('id'),
+                'contract_id': request.asset().contract('id'),
+                'connection_id': request.asset().connection('id'),
+                'asset_id': request.asset().id(),
+                'request_id': request.id(),
+                'request_status': request.status(),
+                'request_type': request.type(),
+            })
 
-    if request.is_tier_config_request():
-        span.set_attributes({
-            'vendor_id': request.tier_configuration().connection('vendor').get('id'),
-            'product_id': request.tier_configuration().product('id'),
-            'marketplace_id': request.tier_configuration().marketplace('id'),
-            'connection_id': request.tier_configuration().connection('id'),
-            'tier_config_id': request.tier_configuration().id(),
-            'request_id': request.id(),
-            'request_status': request.status(),
-            'request_type': request.type(),
-        })
+        if request.is_tier_config_request():
+            span.set_attributes({
+                'vendor_id': request.tier_configuration().connection('vendor', {}).get('id'),
+                'product_id': request.tier_configuration().product('id'),
+                'marketplace_id': request.tier_configuration().marketplace('id'),
+                'connection_id': request.tier_configuration().connection('id'),
+                'tier_config_id': request.tier_configuration().id(),
+                'request_id': request.id(),
+                'request_status': request.status(),
+                'request_type': request.type(),
+            })
+    except Exception:
+        """We don't want to break the execution at any cost"""
+        return
 
 
 def get_context(request_id: str):

@@ -63,6 +63,30 @@ TIER_CONFIG_REQUEST = {
     },
 }
 
+TIER_CONFIG_ADJUSTMENT_REQUEST = {
+    'id': 'TCR-0000-0000-0000-001',
+    'status': 'pending',
+    'type': 'adjustment',
+    'configuration': {
+        'id': 'AST-0000-0000-0000-001',
+        'connection': {
+            'id': 'CN-0000-0000-0000-001',
+            'vendor': {
+                'id': 'VR-0000-0000-0000-001',
+            },
+        },
+        'product': {
+            'id': 'PRD-0000-0000-0000-001',
+        },
+        'marketplace': {
+            'id': 'MP-0000-0000-0000-001',
+        },
+        'contract': {
+            'id': 'CT-0000-0000-0000-001',
+        },
+    },
+}
+
 
 def test_generate_trace_id_should_generate_a_valid_trace_id():
     # Arrange
@@ -236,3 +260,15 @@ def test_is_custom_event_request_should_return_false_if_body_is_not_present():
     is_custom_event = is_custom_event_request({})
 
     assert is_custom_event is False
+
+
+def test_hydrate_span_with_request_attributes_should_not_launch_unexpected_exception():
+    tracer_provider = trace.TracerProvider()
+    tracer = tracer_provider.get_tracer(__name__)
+    span = tracer.start_span("root")
+
+    hydrate_span_with_request_attributes(span, TIER_CONFIG_ADJUSTMENT_REQUEST)
+
+    assert span.attributes.get('request_id') == 'TCR-0000-0000-0000-001'
+    assert span.attributes.get('request_status') == 'pending'
+    assert span.attributes.get('request_type') == 'adjustment'

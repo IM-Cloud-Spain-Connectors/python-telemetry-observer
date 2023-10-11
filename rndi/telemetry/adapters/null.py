@@ -4,7 +4,7 @@
 # Copyright (c) 2023 Ingram Micro. All Rights Reserved.
 #
 from contextlib import contextmanager
-from typing import Any, Dict, Iterable
+from typing import Any, Callable, Dict, Iterable, List
 
 from opentelemetry.trace import Span
 from rndi.telemetry.contracts import Observer
@@ -18,7 +18,7 @@ class DummySpan:
         pass
 
 
-def provide_none_telemetry_adapter(_: dict) -> Observer:
+def provide_none_telemetry_adapter(_: dict, __: List[Callable[[], None]] = None) -> Observer:
     return NoneObserverAdapter()
 
 

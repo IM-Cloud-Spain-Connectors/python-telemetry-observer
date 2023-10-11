@@ -38,7 +38,7 @@ def provide_telemetry_observer(
         adapter = provider(config, automatic_instrumentation)
         logger.debug(f"Telemetry Observer configured with {driver} driver.")
     except Exception as e:
-        adapter = provide_none_telemetry_adapter(config)
+        adapter = provide_none_telemetry_adapter(config, [])
         logger.error(
             f"Telemetry Observer failure, disabling observability with driver {driver} due to: {e}",
         )

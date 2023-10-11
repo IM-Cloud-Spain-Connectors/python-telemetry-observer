@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "rndi-python-telemetry-observer"
-version = "1.0.0"
+version = "1.1.2"
 description = "Provide an observer contract to work with telemetry. By default includes an AzureInsights observer."
-authors = ["Sergio Palacio Ródenas <sergio.palaciorodenas@cloudblue.com>"]
+authors = ["Sergio Palacio Ródenas <sergio.palaciorodenas@ingrammicro.com>"]
 license = "Apache-2.0"
 classifiers = [
     "Development Status :: 5 - Production/Stable",

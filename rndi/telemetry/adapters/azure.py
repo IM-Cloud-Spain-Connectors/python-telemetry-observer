@@ -14,7 +14,6 @@ from opentelemetry.sdk.trace import sampling, Tracer, TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, SpanExporter
 from opentelemetry.trace import NonRecordingSpan, Span, SpanContext
 from pkg_resources import DistributionNotFound, get_distribution
-from rndi.connect.business_objects.adapters import Request
 from rndi.telemetry.adapters.null import DummySpan
 from rndi.telemetry.contracts import Observer
 
@@ -60,6 +59,42 @@ def hydrate_span_with_product_action_attributes(span: Span, body):
         return
 
 
+def is_asset_request(request) -> bool:
+    return 'asset' == request_model(request)
+
+
+def is_tier_config_request(request) -> bool:
+    return 'tier-config' == request_model(request)
+
+
+def request_model(request: dict) -> str:
+    """
+    Returns the request model depending on the request type.
+
+    :param request: dict
+    :return: str
+    """
+
+    def match_request_type(model: dict) -> bool:
+        return model.get('object') in request and request.get('type') in model.get('types')
+
+    try:
+        return next(filter(match_request_type, [
+            {
+                'request': 'asset',
+                'object': 'asset',
+                'types': ['adjustment', 'purchase', 'change', 'suspend', 'resume', 'cancel'],
+            },
+            {
+                'request': 'tier-config',
+                'object': 'configuration',
+                'types': ['setup', 'update', 'adjustment'],
+            },
+        ])).get('request')
+    except StopIteration:
+        return 'undefined'
+
+
 def hydrate_span_with_request_attributes(span, request: dict):
     """
     Given a request and a span, hydrate the span attributes with the request attributes
@@ -69,30 +104,29 @@ def hydrate_span_with_request_attributes(span, request: dict):
     :return:
     """
     try:
-        request = Request(request)
-        if request.is_asset_request():
+        if is_asset_request(request):
             span.set_attributes({
-                'vendor_id': request.asset().connection('vendor', {}).get('id'),
-                'product_id': request.asset().product('id'),
-                'marketplace_id': request.asset().marketplace('id'),
-                'contract_id': request.asset().contract('id'),
-                'connection_id': request.asset().connection('id'),
-                'asset_id': request.asset().id(),
-                'request_id': request.id(),
-                'request_status': request.status(),
-                'request_type': request.type(),
+                'vendor_id': request.get('asset', {}).get('connection', {}).get('vendor', {}).get('id'),
+                'product_id': request.get('asset', {}).get('product', {}).get('id'),
+                'marketplace_id': request.get('asset', {}).get('marketplace', {}).get('id'),
+                'contract_id': request.get('asset', {}).get('contract', {}).get('id'),
+                'connection_id': request.get('asset', {}).get('connection', {}).get('id'),
+                'asset_id': request.get('asset', {}).get('id'),
+                'request_id': request.get('id'),
+                'request_status': request.get('status'),
+                'request_type': request.get('type'),
             })
 
-        if request.is_tier_config_request():
+        if is_tier_config_request(request):
             span.set_attributes({
-                'vendor_id': request.tier_configuration().connection('vendor', {}).get('id'),
-                'product_id': request.tier_configuration().product('id'),
-                'marketplace_id': request.tier_configuration().marketplace('id'),
-                'connection_id': request.tier_configuration().connection('id'),
-                'tier_config_id': request.tier_configuration().id(),
-                'request_id': request.id(),
-                'request_status': request.status(),
-                'request_type': request.type(),
+                'vendor_id': request.get('tier_configuration', {}).get('connection', {}).get('vendor', {}).get('id'),
+                'product_id': request.get('tier_configuration', {}).get('product', {}).get('id'),
+                'marketplace_id': request.get('tier_configuration', {}).get('marketplace', {}).get('id'),
+                'connection_id': request.get('tier_configuration', {}).get('connection', {}).get('id'),
+                'tier_config_id': request.get('tier_configuration', {}).get('id'),
+                'request_id': request.get('id'),
+                'request_status': request.get('status'),
+                'request_type': request.get('status')
             })
     except Exception:
         """We don't want to break the execution at any cost"""

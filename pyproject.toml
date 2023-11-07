@@ -31,7 +31,7 @@ azure-monitor-opentelemetry = "^1.0.0"
 opentelemetry-sdk = "^1.11.1"
 opentelemetry-instrumentation-requests = "*"
 opentelemetry-instrumentation-psycopg2 = "*"
-rndi-connect-business-objects= { git = "https://github.com/IM-Cloud-Spain-Connectors/python-connect-business-objects", branch='v1.0.2'}
+rndi-connect-business-objects= { git = "https://github.com/IM-Cloud-Spain-Connectors/python-connect-business-objects", branch='master'}
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.2.0"
